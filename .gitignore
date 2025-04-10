@@ -160,7 +160,7 @@ cython_debug/
 
 .vscode/
 *.ini
-/data/
+#/data/
 *.html
 
 # Ignore specific folders under
