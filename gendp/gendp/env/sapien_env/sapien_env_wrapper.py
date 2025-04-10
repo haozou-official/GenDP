@@ -113,16 +113,33 @@ class SapienEnvWrapper():
         
         # setup sapien rendering
         self.gui = GUIBase(env.scene, env.renderer, headless=True)
-        for name, params in YX_TABLE_TOP_CAMERAS.items():
-            split_name = name.split('_')
-            split_name.append('view')
-            rejoin_name = '_'.join(split_name)
-            if rejoin_name in self.render_obs_keys:
-                if 'rotation' in params:
-                    self.gui.create_camera_from_pos_rot(**params)
-                else:
-                    self.gui.create_camera(**params)
-        
+        # for name, params in YX_TABLE_TOP_CAMERAS.items():
+        #     split_name = name.split('_')
+        #     split_name.append('view')
+        #     rejoin_name = '_'.join(split_name)
+        #     if rejoin_name in self.render_obs_keys:
+        #         if 'rotation' in params:
+        #             self.gui.create_camera_from_pos_rot(**params)
+        #         else:
+        #             self.gui.create_camera(**params)
+
+        SELECTED_CAM_NAMES = ['right_top', 'left_top', 'right_bottom', 'left_bottom']
+
+        for name in SELECTED_CAM_NAMES: 
+        # for name, params in YX_TABLE_TOP_CAMERAS.items():  # Force all camera views
+        # # ['right_top_view', 'left_top_view', 'right_bottom_view', 'left_bottom_view', 'front_view', 'right_view']
+            params = YX_TABLE_TOP_CAMERAS[name]
+            if 'rotation' in params:
+                self.gui.create_camera_from_pos_rot(**params)
+            else:
+                self.gui.create_camera(**params)
+
+        # Overwrite render_obs_keys to exactly match the actual camera names
+        self.render_obs_keys = [cam.name for cam in self.gui.cams]
+
+        # print(f"🧩 Cameras created: {[cam.name for cam in self.gui.cams]}")
+        # print(f"📸 Render keys set to: {self.render_obs_keys}")
+                        
         # setup sapien control
         # self.teleop = TeleopRobot(env.robot_name)
         self.teleop = KinHelper(env.robot_name)
@@ -131,6 +148,9 @@ class SapienEnvWrapper():
         self.meshes, self.mesh_offsets = load_mesh(env.robot_name)
     
     def get_observation(self, raw_obs=None):
+        # print(f"🧩 self.shape_meta['obs'].keys(): {self.shape_meta['obs'].keys()}")
+        # print(f"🧩 self.shape_meta['obs']: {self.shape_meta['obs']}")
+
         if raw_obs is None:
             raw_obs = {}
             arm_dof = self.env.arm_dof
@@ -155,7 +175,7 @@ class SapienEnvWrapper():
                 raw_obs[f'{cam.name}_extrinsic'] = cam.get_extrinsic_matrix()
             
             if 'd3fields' in self.shape_meta['obs']:
-                use_dino = False
+                use_dino = True
                 distill_dino = self.shape_meta['obs']['d3fields']['info']['distill_dino'] if 'distill_dino' in self.shape_meta['obs']['d3fields']['info'] else False
                 intrinsics = np.stack([cam.get_intrinsic_matrix() for cam in self.gui.cams], axis=0) # (V, 3, 3)
                 extrinsics = np.stack([cam.get_extrinsic_matrix() for cam in self.gui.cams], axis=0) # (V, 4, 4)
@@ -177,8 +197,13 @@ class SapienEnvWrapper():
                 
                 aggr_src_pts = aggr_src_pts_ls[0]
                 aggr_feats = aggr_feats_ls[0]
+                # print(f"🧩 aggr_src_pts.shape: {aggr_src_pts.shape}")
+                # print(f"🧩 aggr_feats.shape: {'None' if aggr_feats is None else aggr_feats.shape}")
                 if use_dino or distill_dino:
-                    aggr_pts_feats = np.concatenate([aggr_src_pts, aggr_feats], axis=-1)
+                    if aggr_feats is not None and aggr_feats.size > 0:
+                        aggr_pts_feats = np.concatenate([aggr_src_pts, aggr_feats], axis=-1)
+                    else:
+                        aggr_pts_feats = aggr_src_pts
                 else:
                     aggr_pts_feats = aggr_src_pts
                 
@@ -211,6 +236,15 @@ class SapienEnvWrapper():
         # :return: obs, reward, done, info
         # action_euler = self.rotation_transformer.forward(action[3:9])
         # action_in_world = np.concatenate([action[:3], action_euler, action[9:]])
+
+        # action_pos_world = action[:3]
+        # ee_pose = self.env.palm_link.get_pose()
+        # ee_pos = ee_pose.p
+        # pose_diff = np.linalg.norm(action_pos_world - ee_pos)
+        # print(f"📍 Action target (world): {action_pos_world}")
+        # print(f"🤖 EE current pos: {ee_pos}")
+        # print(f"📏 Pose diff (policy target vs. EE): {pose_diff}")
+
         if not self.is_joint:
             action_in_robot = transform_action_from_world_to_robot(action, self.env.robot.get_pose())
             

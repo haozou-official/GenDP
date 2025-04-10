@@ -87,7 +87,10 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
     data_group = root.require_group('data', overwrite=True)
     meta_group = root.require_group('meta', overwrite=True)
 
+    #print(f"🔍 Looking for episodes in: {dataset_dir}")
     episodes_paths = glob.glob(os.path.join(dataset_dir, 'episode_*.hdf5'))
+    #print(f"🧾 Found {len(episodes_paths)} episode files.")
+
     episodes_stem_name = [Path(path).stem for path in episodes_paths]
     episodes_idx = [int(stem_name.split('_')[-1]) for stem_name in episodes_stem_name]
     episodes_idx = sorted(episodes_idx)
@@ -101,13 +104,16 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
     spatial_data_dict = dict()
     for epi_idx in tqdm(episodes_idx, desc=f"Loading episodes"):
         dataset_path = os.path.join(dataset_dir, f'episode_{epi_idx}.hdf5')
+        #print(f"\nProcessing {dataset_path}")
         feats_per_epi = list() # save it separately to avoid OOM
         with h5py.File(dataset_path) as file:
             # count total steps
             episode_length = file['cartesian_action'].shape[0]
+            #print(f"Episode length: {episode_length}")
             episode_end = prev_end + episode_length
             prev_end = episode_end
             episode_ends.append(episode_end)
+            #print(f"episode_end added: {episode_end}")
             
             # save lowdim data to lowedim_data_dict
             for key in lowdim_keys + ['action']:
@@ -117,12 +123,15 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
                 if key not in lowdim_data_dict:
                     lowdim_data_dict[key] = list()
                 this_data = file[data_key][()]
+                #print(f"Loaded lowdim [{key}]: shape {this_data.shape}")
                 if key == 'action':
                     this_data = _convert_actions(
                         raw_actions=this_data,
                         rotation_transformer=rotation_transformer,
                         action_key=data_key,
                     )
+                    expected_shape = (episode_length,) + tuple(shape_meta['action']['shape'])
+                    #print(f"❓ Action shape mismatch: got {this_data.shape}, expected {expected_shape}")
                     assert this_data.shape == (episode_length,) + tuple(shape_meta['action']['shape'])
                 else:
                     assert this_data.shape == (episode_length,) + tuple(shape_meta['obs'][key]['shape'])
@@ -132,29 +141,36 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
                 if key not in rgb_data_dict:
                     rgb_data_dict[key] = list()
                 imgs = file['observations']['images'][key][()]
+                #print(f"Loaded raw RGB [{key}]: shape {imgs.shape}")
                 shape = tuple(shape_meta['obs'][key]['shape'])
                 c,h,w = shape
                 resize_imgs = [cv2.resize(img, (w,h), interpolation=cv2.INTER_AREA) for img in imgs]
                 imgs = np.stack(resize_imgs, axis=0)
+                #print(f"Resized RGB [{key}]: shape {imgs.shape}")
                 assert imgs[0].shape == (h,w,c)
                 rgb_data_dict[key].append(imgs)
             
+            # ---------- Depth ----------
             for key in depth_keys:
                 if key not in depth_data_dict:
                     depth_data_dict[key] = list()
                 imgs = file['observations']['images'][key][()]
+                #print(f"Loaded raw Depth [{key}]: shape {imgs.shape}")
                 shape = tuple(shape_meta['obs'][key]['shape'])
                 c,h,w = shape
                 resize_imgs = [cv2.resize(img, (w,h), interpolation=cv2.INTER_AREA) for img in imgs]
                 imgs = np.stack(resize_imgs, axis=0)[..., None]
                 imgs = np.clip(imgs, 0, 1000).astype(np.uint16)
+                #print(f"Resized Depth [{key}]: shape {imgs.shape}")
                 assert imgs[0].shape == (h,w,c)
                 depth_data_dict[key].append(imgs)
             
+            # ---------- D3Fields (spatial) ----------
             for key in spatial_keys:
                 assert key == 'd3fields' # only support d3fields for now
                 if fusion is None:
                     raise RuntimeError('fusion must be specified')
+                #print(f"Processing D3Fields for key: {key}")
                 
                 # construct inputs for d3fields processing
                 view_keys = shape_meta['obs'][key]['info']['view_keys']
@@ -195,6 +211,9 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
                     tool_names=tool_names,
                     exclude_colors=exclude_colors,
                 )
+
+                # print(f"✅ D3Fields points: {len(aggr_src_pts_ls)} frames, shape of one frame: {aggr_src_pts_ls[0].shape}")
+                # print(f"✅ D3Fields feats:  {len(aggr_feats_ls)} frames, shape of one frame: {aggr_feats_ls[0].shape}")
                 
                 if distill_dino:
                     for pts_idx, aggr_src_pts in enumerate(aggr_src_pts_ls):
@@ -232,6 +251,8 @@ def _convert_real_to_dp_replay(store, shape_meta, dataset_dir, rotation_transfor
     
     # dump data_dict
     print('Dumping meta data')
+    #print(f'len(episode_ends): {len(episode_ends)}')
+    #print(episode_ends)
     n_steps = episode_ends[-1]
     _ = meta_group.array('episode_ends', episode_ends, 
         dtype=np.int64, compressor=None, overwrite=True)

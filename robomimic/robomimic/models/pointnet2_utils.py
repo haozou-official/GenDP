@@ -444,6 +444,9 @@ class PointNet2Encoder(nn.Module):
 
     def forward(self, xyz):
         B, D, N = xyz.size()
+        # print(f"[pointnet2_utils] xyz.size() {xyz.size()}")
+        # print(f"[pointnet2_utils] D {D}")
+        # print(f"[pointnet2_utils] self.in_channels {self.in_channels}")
         assert D == self.in_channels
         if D > 3:
             norm = xyz[:, 3:, :]

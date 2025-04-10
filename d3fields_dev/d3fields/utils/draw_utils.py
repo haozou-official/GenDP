@@ -431,7 +431,12 @@ def aggr_point_cloud_from_data(
         depth = depths[i]
         color = colors[i]
         K = Ks[i]
+        # print(f"[aggr_point_cloud_from_data] depth.shape: {depth.shape}")
+        # print(f"[aggr_point_cloud_from_data] K: {K}")
         cam_param = [K[0, 0], K[1, 1], K[0, 2], K[1, 2]]  # fx, fy, cx, cy
+        # print(f"[aggr_point_cloud_from_data] cam_param: {cam_param}")
+        # print("[aggr_point_cloud_from_data] masks.shape:", None if masks is None else masks.shape)
+
         if masks is None:
             mask = depth > 0
         else:
@@ -440,7 +445,9 @@ def aggr_point_cloud_from_data(
         for exclude_color in exclude_colors:
             mask = mask & (~color_seg(color[None], exclude_color))[0]
 
+        # DEBUG
         pcd = depth2fgpcd(depth, mask, cam_param)
+        # print(f"[aggr_point_cloud_from_data] pcd.shape: {pcd.shape}")
 
         pose = poses[i]
         if pose_fmt == ExtriConvention.WORLD_IN_CAM:

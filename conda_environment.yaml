@@ -4,14 +4,21 @@ channels:
   - pytorch3d
   - nvidia
   - conda-forge
-  - xformers
+  # - xformers
 dependencies:
   - python=3.9
   - pip=22.2.2
   - cuda-toolkit=12.1.0
-  - pytorch=2.1.0
-  - torchvision=0.16.0
-  - pytorch3d=0.7.5
+  - cuda-nvcc=12.1
+  - cuda=12.1.0
+  - cuda-tools=12.1.0
+  - cuda-version=12.1
+  - cuda-command-line-tools=12.1.0
+  - cuda-compiler=12.1.0
+  - cuda-runtime=12.1.0
+  # - pytorch=2.1.0
+  # - torchvision=0.16.0
+  # - pytorch3d=0.7.5
   - numpy=1.23.3
   - numba==0.56.4
   - cffi=1.15.1
@@ -46,7 +53,7 @@ dependencies:
   - cmake=3.24.3
   - llvm-openmp=14
   - imagecodecs==2022.8.8
-  - xformers
+  # - xformers
   - pip:
     - imagecodecs==2022.9.26
     - sapien==2.2.2

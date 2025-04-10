@@ -11,7 +11,7 @@ checkpoint:
     mode: max
     monitor_key: test_mean_score
 dataloader:
-  batch_size: 1
+  batch_size: 64
   num_workers: 8
   persistent_workers: false
   pin_memory: true
@@ -89,13 +89,13 @@ policy:
     obs:
       d3fields:
         shape:
-        - 5 # C
+        - 4 # C
         - 1000 # N
         type: spatial
         info:
           reference_frame: robot
           distill_dino: true
-          distill_obj: knife
+          distill_obj: cube
           view_keys:
           - camera_0
           - camera_1
@@ -103,12 +103,12 @@ policy:
           - camera_3
           N_gripper: 400
           boundaries:
-            x_lower: -0.32
-            x_upper: 0.10
-            y_lower: -0.28
-            y_upper: 0.05
-            z_lower: 0.02
-            z_upper: 0.5
+              x_lower: -0.32
+              x_upper: 0.10
+              y_lower: -0.28
+              y_upper: 0.05
+              z_lower:  0.02
+              z_upper:  0.5
           resize_ratio: 0.5
 shape_meta:
   action:
@@ -117,13 +117,13 @@ shape_meta:
   obs:
     d3fields:
       shape:
-      - 5 # C
+      - 4 # C
       - 1000 # N
       type: spatial
       info:
         reference_frame: robot
         distill_dino: true
-        distill_obj: knife
+        distill_obj: cube
         view_keys:
         - camera_0
         - camera_1
@@ -131,18 +131,18 @@ shape_meta:
         - camera_3
         N_gripper: 400
         boundaries:
-          x_lower: -0.32
-          x_upper: 0.10
-          y_lower: -0.28
-          y_upper: 0.05
-          z_lower: 0.02
-          z_upper: 0.5
+            x_lower: -0.32
+            x_upper: 0.10
+            y_lower: -0.28
+            y_upper: 0.05
+            z_lower:  0.02
+            z_upper:  0.5
         resize_ratio: 0.5
 task:
   abs_action: true
   dataset:
     _target_: gendp.dataset.real_dataset.RealDataset
-    dataset_dir: ${data_root}/data/real_aloha_demo/${dataset_name}
+    dataset_dir: ${data_root}/data/cube_picking_hdf5_Apr9
     vis_input: false
     horizon: 16
     pad_after: 7
@@ -159,13 +159,13 @@ task:
       obs:
         d3fields:
           shape:
-          - 5 # C
+          - 4 # C
           - 1000 # N
           type: spatial
           info:
             reference_frame: robot
             distill_dino: true
-            distill_obj: knife
+            distill_obj: cube
             view_keys:
             - camera_0
             - camera_1
@@ -173,16 +173,16 @@ task:
             - camera_3
             N_gripper: 400
             boundaries:
-              x_lower: -0.32
-              x_upper: 0.10
-              y_lower: -0.28
-              y_upper: 0.05
-              z_lower: 0.02
-              z_upper: 0.5
+                x_lower: -0.32
+                x_upper: 0.10
+                y_lower: -0.28
+                y_upper: 0.05
+                z_lower:  0.02
+                z_upper:  0.5
             resize_ratio: 0.5
     use_cache: true
     val_ratio: 0.1
-  dataset_dir: ${data_root}/data/real_aloha_demo/${dataset_name}
+  dataset_dir: ${data_root}/data/cube_picking_hdf5_Apr9
   name: ${task_name}
   shape_meta:
     action:
@@ -191,13 +191,13 @@ task:
     obs:
       d3fields:
         shape:
-        - 5 # C
+        - 4 # C
         - 1000 # N
         type: spatial
         info:
           reference_frame: robot
           distill_dino: true
-          distill_obj: knife
+          distill_obj: cube
           view_keys:
           - camera_0
           - camera_1
@@ -205,16 +205,16 @@ task:
           - camera_3
           N_gripper: 400
           boundaries:
-            x_lower: -0.32
-            x_upper: 0.10
-            y_lower: -0.28
-            y_upper: 0.05
-            z_lower: 0.02
-            z_upper: 0.5
+              x_lower: -0.32
+              x_upper: 0.10
+              y_lower: -0.28
+              y_upper: 0.05
+              z_lower:  0.02
+              z_upper:  0.5
           resize_ratio: 0.5
   task_name: ${task_name}
-task_name: knife
-dataset_name: knife_real
+task_name: cube
+dataset_name: cube_real
 training:
   checkpoint_every: 200
   debug: false
@@ -225,7 +225,7 @@ training:
   lr_warmup_steps: 500
   max_train_steps: null
   max_val_steps: null
-  num_epochs: 1000
+  num_epochs: 800
   resume: false
   rollout_every: 200
   sample_every: 5
@@ -234,7 +234,7 @@ training:
   use_ema: true
   val_every: 10
 val_dataloader:
-  batch_size: 1
+  batch_size: 64
   num_workers: 8
   persistent_workers: false
   pin_memory: true

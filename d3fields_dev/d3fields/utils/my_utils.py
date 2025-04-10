@@ -528,13 +528,22 @@ def depth2fgpcd(depth: np.ndarray, mask: np.ndarray, cam_params: List, preserve_
         mask = np.logical_and(mask, depth > 0)
     # mask = (depth <= 0.599/0.8)
     fgpcd = np.zeros((mask.sum(), 3))
+    # print(f"[depth2fgpcd] mask.sum(): {mask.sum()}")
     fx, fy, cx, cy = cam_params
     pos_x, pos_y = np.meshgrid(np.arange(w), np.arange(h))
+    # print(f"[depth2fgpcd] pos_x.shape: {pos_x.shape}")
+    # print(f"[depth2fgpcd] pos_y.shape: {pos_y.shape}")
     pos_x = pos_x[mask]
     pos_y = pos_y[mask]
     fgpcd[:, 0] = (pos_x - cx) * depth[mask] / fx
     fgpcd[:, 1] = (pos_y - cy) * depth[mask] / fy
     fgpcd[:, 2] = depth[mask]
+    # print(f"[depth2fgpcd] fgpcd.shape: {fgpcd.shape}")
+    # print("[fgpcd] x range: min =", fgpcd[:, 0].min(), ", max =", fgpcd[:, 0].max())
+    # print("[fgpcd] y range: min =", fgpcd[:, 1].min(), ", max =", fgpcd[:, 1].max())
+    # print("[fgpcd] z (depth) range: min =", fgpcd[:, 2].min(), ", max =", fgpcd[:, 2].max())
+    # print("[fgpcd] first 5 points:\n", fgpcd[:5])
+
     return fgpcd
 
 def pcd2pix(pcd, cam_params, offset=(0, 0)):

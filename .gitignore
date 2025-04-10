@@ -163,3 +163,14 @@ cython_debug/
 /data/
 *.html
 
+# Ignore specific folders under
+data/__pycache__/
+data/cube/
+data/cube_picking_hdf5_Apr9/
+data/cube_picking_hdf5_mar28/
+data/cube_picking_processed/
+data/hang_mug/
+data/outputs/
+data/sapien_demo/
+
+eval_results/

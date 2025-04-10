@@ -11,7 +11,7 @@ import torch
 import dill
 import wandb
 import json
-from omegaconf import open_dict
+from omegaconf import OmegaConf, open_dict
 import gendp
 sys.modules['diffusion_policy'] = gendp
 from gendp.workspace.base_workspace import BaseWorkspace
@@ -43,6 +43,31 @@ def main(checkpoint, output_dir, device,
     # load checkpoint
     payload = torch.load(open(checkpoint, 'rb'), pickle_module=dill)
     cfg = payload['cfg']
+    with open_dict(cfg.task):
+        cfg.task.env_runner = OmegaConf.create({
+            "_target_": "gendp.env_runner.sapien_series_image_runner.SapienSeriesImageRunner",
+            "n_test": 22,
+            "n_test_vis": 6,
+            "test_start_seed": 10000,
+            "n_train": 10,
+            "n_train_vis": 3,
+            "train_start_idx": 0,
+            "dataset_dir": cfg.task.dataset_dir,
+            "shape_meta": cfg.task.shape_meta,
+            "render_obs_keys": ["camera_0"],
+            "fps": 10,
+            "crf": 22,
+            "max_steps": 400,
+            #"max_steps": 100,
+            "n_obs_steps": 2,
+            "n_action_steps": 8,
+            "abs_action": cfg.task.abs_action,
+        })
+    # print("\n📂 cfg.task:")
+    # print(OmegaConf.to_yaml(cfg.task))
+    # print("\n📋 Full Config:")
+    # print(OmegaConf.to_yaml(cfg))
+
     cls = hydra.utils.get_class(cfg._target_)
     workspace = cls(cfg, output_dir=output_dir)
     workspace: BaseWorkspace

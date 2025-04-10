@@ -26,6 +26,8 @@ def main(cfg: OmegaConf):
     # resolve immediately so all the ${now:} resolvers
     # will use the same time.
     OmegaConf.resolve(cfg)
+
+    #print(OmegaConf.to_yaml(cfg))
     
     # set device id
     device_id = cfg.training.device_id

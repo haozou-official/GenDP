@@ -246,6 +246,7 @@ def d3fields_proc(fusion, shape_meta, color_seq, depth_seq, extri_seq, intri_seq
             dense_ee_pcd = teleop_robot.compute_robot_pcd(curr_qpos[qpos_dim*rob_i:qpos_dim*(rob_i+1)], finger_names, dense_num_pts, pcd_name=f'dense_ee_pcd_{rob_i}') # (N, 3)
             ee_pcd = teleop_robot.compute_robot_pcd(curr_qpos[qpos_dim*rob_i:qpos_dim*(rob_i+1)], finger_names, sparse_num_pts, pcd_name=f'ee_pcd_{rob_i}')
             robot_pcd = teleop_robot.compute_robot_pcd(curr_qpos[qpos_dim*rob_i:qpos_dim*(rob_i+1)], num_pts=[1000 for _ in range(len(teleop_robot.meshes.keys()))], pcd_name=f'robot_pcd_{rob_i}')
+            #print(f"[d3fields_proc] robot_pcd shape: ({robot_pcd.shape})")
             if tool_name is not None:
                 tool_pcd = teleop_robot.compute_tool_pcd(curr_qpos[qpos_dim*rob_i:qpos_dim*(rob_i+1)], tool_name, N_gripper, pcd_name=f'tool_pcd_{rob_i}')
         
@@ -254,6 +255,7 @@ def d3fields_proc(fusion, shape_meta, color_seq, depth_seq, extri_seq, intri_seq
             dense_ee_pcd = (robot_base_pose_in_world @ np.concatenate([dense_ee_pcd, np.ones((dense_ee_pcd.shape[0], 1))], axis=-1).T).T[:, :3]
             ee_pcd = (robot_base_pose_in_world @ np.concatenate([ee_pcd, np.ones((ee_pcd.shape[0], 1))], axis=-1).T).T[:, :3]
             robot_pcd = (robot_base_pose_in_world @ np.concatenate([robot_pcd, np.ones((robot_pcd.shape[0], 1))], axis=-1).T).T[:, :3]
+            #print(f"[d3fields_proc] robot_pcd world frame shape: ({robot_pcd.shape})")
             if tool_name is not None:
                 tool_pcd = (robot_base_pose_in_world @ np.concatenate([tool_pcd, np.ones((tool_pcd.shape[0], 1))], axis=-1).T).T[:, :3]
             
@@ -267,10 +269,12 @@ def d3fields_proc(fusion, shape_meta, color_seq, depth_seq, extri_seq, intri_seq
         dense_ee_pcd = np.concatenate(dense_ee_pcd_ls + tool_pcd_ls, axis=0)
         ee_pcd = np.concatenate(ee_pcd_ls + tool_pcd_ls, axis=0)
         robot_pcd = np.concatenate(robot_pcd_ls + tool_pcd_ls, axis=0)
+        #print(f"[d3fields_proc] robot_pcd_ls + tool_pcd_ls shape: ({robot_pcd.shape})")
         
         
         # post process robot pcd
         ee_pcd_tensor = torch.from_numpy(ee_pcd).to(device=fusion.device, dtype=fusion.dtype)
+        #print(f"[d3fields_proc] ee_pcd_tensor shape: ({ee_pcd_tensor.shape})")
         
         if use_dino or distill_dino:
             ee_eval_res = fusion.eval(ee_pcd_tensor, return_names=['dino_feats'])
@@ -283,7 +287,9 @@ def d3fields_proc(fusion, shape_meta, color_seq, depth_seq, extri_seq, intri_seq
             obj_pcd = fusion.extract_masked_pcd(list(range(1, fusion.get_inst_num())), boundaries=boundaries)
             src_feat_list, src_pts_list, _ = fusion.select_features_from_pcd(obj_pcd, N_gripper, per_instance=True, use_seg=use_seg, use_dino=(use_dino or distill_dino))
         else:
-            obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=robot_pcd, exclude_threshold=exclude_threshold, exclude_colors=exclude_colors)
+            obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=None, exclude_threshold=None, exclude_colors=exclude_colors)
+            #print(f"[d3fields_proc] obj_pcd = fusion.extract_pcd_in_box: ({obj_pcd.shape})")
+            #obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=robot_pcd, exclude_threshold=exclude_threshold, exclude_colors=exclude_colors)
             src_feat_list, src_pts_list, _ = fusion.select_features_from_pcd(obj_pcd, N_total - ee_pcd.shape[0], per_instance=True, use_seg=use_seg, use_dino=(use_dino or distill_dino))
         
         aggr_src_pts = np.concatenate(src_pts_list, axis=0) # (N, 3)
@@ -307,6 +313,9 @@ def d3fields_proc(fusion, shape_meta, color_seq, depth_seq, extri_seq, intri_seq
                                                        obj_name=distill_obj,).detach().cpu().numpy()
         
         try:
+            # print(f"[d3fields_proc] aggr_src_pts.shape[0]: {aggr_src_pts.shape[0]}")
+            # print(f"[d3fields_proc] N_total: {N_total}")
+            #assert aggr_src_pts.shape[0] <= N_total
             assert aggr_src_pts.shape[0] == N_total
             assert aggr_feats.shape[0] == N_total if use_dino else True
         except:
@@ -420,7 +429,8 @@ def d3fields_proc_for_vis(fusion, shape_meta, color_seq, depth_seq, extri_seq, i
             # convert to numpy array
             robot_pcd = np.concatenate(robot_pcd_ls, axis=0)
             
-            obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=robot_pcd, exclude_threshold=exclude_threshold, exclude_colors=exclude_colors)
+            #obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=robot_pcd, exclude_threshold=exclude_threshold, exclude_colors=exclude_colors)
+            obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, excluded_pts=None, exclude_threshold=None, exclude_colors=exclude_colors)
         else:
             obj_pcd = fusion.extract_pcd_in_box(boundaries=boundaries, downsample=True, downsample_r=0.002, exclude_colors=exclude_colors)
         # res = fusion.eval(obj_pcd)

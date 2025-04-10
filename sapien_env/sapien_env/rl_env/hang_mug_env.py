@@ -141,31 +141,177 @@ class HangMugRLEnv(HangMugEnv, BaseRLEnv):
         return 10000
 
 
+# def main_env():
+#     env = HangMugRLEnv(use_gui=True, robot_name="panda", frame_skip=10, use_visual_obs=False)
+#     base_env = env
+#     robot_dof = env.arm_dof + 1
+#     env.seed(0)
+#     env.reset()
+#     viewer = Viewer(base_env.renderer)
+#     viewer.set_scene(base_env.scene)
+#     viewer.set_camera_xyz(x=0, y=0.5, z = 0.5)
+#     viewer.set_camera_rpy(r=0, p=-0.5, y=np.pi/2)
+#     viewer.set_fovy(2.0)
+#     base_env.viewer = viewer
+
+#     viewer.toggle_pause(False)
+#     from tqdm import tqdm
+#     for i in tqdm(range(200)):
+#         action = np.zeros(robot_dof)
+#         action[2] = 0.01
+#         obs, reward, done, _ = env.step(action)
+#         env.render()
+
+#     viewer.toggle_pause(True)
+#     while not viewer.closed:
+#         env.simple_step()
+#         env.render()
+
+# def main_env():
+#     import imageio
+#     import os
+#     import numpy as np
+#     import transforms3d.euler
+#     from sapien_env.gui.gui_base import YX_TABLE_TOP_CAMERAS
+#     from sapien_env.rl_env.hang_mug_env import HangMugRLEnv
+#     from sapien_env.sim_env.constructor import add_default_scene_light
+#     from sapien.core import Pose
+#     import sapien
+
+#     env = HangMugRLEnv(
+#         use_gui=False,
+#         use_visual_obs=True,
+#         need_offscreen_render=True,
+#         frame_skip=5,
+#         robot_name="panda"
+#     )
+#     env.seed(42)
+#     env.reset()
+
+#     # Add light
+#     add_default_scene_light(env.scene, env.renderer)
+
+#     # Setup camera
+#     for cam_name, params in YX_TABLE_TOP_CAMERAS.items():
+#         if 'rotation' in params:
+#             position = np.array(params['position'])
+#             euler_angles = np.array(params['rotation'])  # [roll, pitch, yaw]
+#             #quat = transforms3d.euler.euler2quat(*euler_angles)  # x, y, z, w
+#             quat = transforms3d.euler.euler2quat(euler_angles[0], euler_angles[1], euler_angles[2], axes='sxyz')
+#             pose = Pose(position, quat)
+#             env.create_camera_from_pose(
+#                 pose=pose,
+#                 name=cam_name,
+#                 resolution=params['resolution'],
+#                 fov=params['fov']
+#             )
+#         else:
+#             env.create_camera(
+#                 position=params['position'],
+#                 look_at_dir=params['look_at_dir'],
+#                 right_dir=params['right_dir'],
+#                 name=cam_name,
+#                 resolution=params['resolution'],
+#                 fov=params['fov']
+#             )
+
+#     cam_name = list(env.cameras.keys())[0]
+#     print(f"✅ Using camera: {cam_name}")
+
+#     save_dir = "./video_output"
+#     os.makedirs(save_dir, exist_ok=True)
+#     video_path = os.path.join(save_dir, "rollout.mp4")
+#     writer = imageio.get_writer(video_path, fps=20)
+
+#     for i in range(100):
+#         action = np.zeros(env.arm_dof + 1)
+#         action[2] = 0.01  # simple upward motion
+#         obs, reward, done, _ = env.step(action)
+#         rgb = env.cameras[cam_name].get_rgb()
+#         frame = (rgb * 255).astype(np.uint8)
+#         writer.append_data(frame)
+
+#     writer.close()
+#     print(f"🎥 Saved video to: {video_path}")
+
+def add_default_scene_light(scene: sapien.Scene, renderer: sapien.VulkanRenderer):
+    direction = np.array([0, -1, -1], dtype=np.float32)
+    color = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+
+    scene.add_directional_light(
+        direction=direction,
+        color=color,
+        shadow=True,
+        position=np.array([0, 0, 2], dtype=np.float32),  # optional
+        scale=2.0,
+        near=-2.0,
+        far=5.0,
+        shadow_map_size=2048
+    )
+
+    scene.set_ambient_light([0.3, 0.3, 0.3])
+
 def main_env():
-    env = HangMugRLEnv(use_gui=True, robot_name="panda", frame_skip=10, use_visual_obs=False)
-    base_env = env
-    robot_dof = env.arm_dof + 1
-    env.seed(0)
+    import imageio
+    import os
+    from sapien_env.gui.gui_base import GUIBase, YX_TABLE_TOP_CAMERAS
+    #from sapien_env.utils.render_scene_utils import add_default_scene_light
+    import sapien.core as sapien
+    import cv2  # For resizing
+
+    # Setup environment
+    env = HangMugRLEnv(
+        use_gui=False,
+        use_visual_obs=True,
+        need_offscreen_render=True,
+        frame_skip=5,
+        robot_name="panda"
+    )
+    env.seed(42)
     env.reset()
-    viewer = Viewer(base_env.renderer)
-    viewer.set_scene(base_env.scene)
-    viewer.set_camera_xyz(x=0, y=0.5, z = 0.5)
-    viewer.set_camera_rpy(r=0, p=-0.5, y=np.pi/2)
-    viewer.set_fovy(2.0)
-    base_env.viewer = viewer
 
-    viewer.toggle_pause(False)
-    from tqdm import tqdm
-    for i in tqdm(range(200)):
-        action = np.zeros(robot_dof)
-        action[2] = 0.01
+    # Set up camera system (headless rendering)
+    add_default_scene_light(env.scene, env.renderer)
+    gui = GUIBase(env.scene, env.renderer, headless=True)
+
+    # Add cameras defined in YX_TABLE_TOP_CAMERAS
+    for name, params in YX_TABLE_TOP_CAMERAS.items():
+        if 'rotation' in params:
+            gui.create_camera_from_pos_rot(position=params['position'], rotation=params['rotation'], name=name)
+        else:
+            gui.create_camera(position=params['position'], look_at_dir=params['look_at_dir'], right_dir=params['right_dir'], name=name)
+
+    # Prepare to write video
+    save_dir = "./video_output"
+    os.makedirs(save_dir, exist_ok=True)
+    video_path = os.path.join(save_dir, "hang_mug_env.mp4")
+
+    writer = imageio.get_writer(video_path, fps=20)
+
+    for i in range(200):
+        action = np.zeros(env.arm_dof + 1)
+        action[2] = 0.01  # small vertical motion
         obs, reward, done, _ = env.step(action)
-        env.render()
 
-    viewer.toggle_pause(True)
-    while not viewer.closed:
-        env.simple_step()
-        env.render()
+        # List of RGB frames from all mounted cameras
+        rgbs = gui.render()
+
+        # Resize all views to the same shape (optional but recommended)
+        resized_rgbs = [cv2.resize(rgb, (320, 240)) for rgb in rgbs]
+
+        # 6 resized_rgbs, reshape to 2 rows × 3 columns
+        row1 = np.concatenate(resized_rgbs[:3], axis=1)
+        row2 = np.concatenate(resized_rgbs[3:], axis=1)
+        panel = np.concatenate([row1, row2], axis=0)
+
+        # Write to video
+        writer.append_data(panel)
+
+        # for rgb in rgbs:
+        #     writer.append_data(rgb)
+
+    writer.close()
+    print(f"Saved video to {video_path}")
 
 
 if __name__ == '__main__':

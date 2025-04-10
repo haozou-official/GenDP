@@ -14,7 +14,7 @@ import numpy as np
 import textwrap
 import random
 import sys
-sys.path.append('/home/yixuan22/general_dp/robomimic')
+sys.path.append('/home/hz2999/gendp/robomimic')
 
 import robomimic.models.base_nets as BaseNets
 from robomimic.models.pointnet_utils import PointNetEncoder
